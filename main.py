@@ -29,34 +29,44 @@ def main():
         {"role": "user", "content": args.user_prompt},
     ]
 
-    response = client.chat.completions.create(
-        model="gpt-5.4-mini",
-        messages=messages,
-        tools=available_functions,
-        temperature=0,
-    )
+    
+    for _ in range(20):
+        response = client.chat.completions.create(
+            model="gpt-5.4-mini",
+            messages=messages,
+            tools=available_functions,
+            temperature=0,
+        )
 
-    if not response.usage:
-        raise RuntimeError("API response appears to be malformed")
+        if not response.usage:
+            raise RuntimeError("API response appears to be malformed")
 
-    if args.verbose:
-        print(f'User prompt: "{user_prompt}"')
-        print(f"Prompt tokens: {response.usage.prompt_tokens}")
-        print(f"Response tokens: {response.usage.completion_tokens}")
+        if args.verbose:
+            print(f'User prompt: "{user_prompt}"')
+            print(f"Prompt tokens: {response.usage.prompt_tokens}")
+            print(f"Response tokens: {response.usage.completion_tokens}")
 
-    message = response.choices[0].message
+        message = response.choices[0].message
+        messages.append(message)
 
-    if message.tool_calls:
-        for tool_call in message.tool_calls:
-            result_message = call_function(tool_call, args.verbose)
+        if message.tool_calls:
+            for tool_call in message.tool_calls:
+                result_message = call_function(tool_call, args.verbose)
 
-            if not result_message["content"]:
-                raise Exception("Tool call returned an empty content")
+                if not result_message["content"]:
+                    raise Exception("Tool call returned an empty content")
 
-            if args.verbose:
-                print(f"-> {result_message['content']}")
+                messages.append(result_message)
+
+                if args.verbose:
+                    print(f"-> {result_message['content']}")
+        else:
+            print(f"Final response:\n{message.content}")
+            break
     else:
-        print(message.content)
+        print("Error: Maximum iterations reached without a final response.")
+        raise SystemExit(1)
+
     
 
 if __name__ == "__main__":
